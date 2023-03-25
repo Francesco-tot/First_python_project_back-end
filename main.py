@@ -2,16 +2,40 @@
 from fastapi import FastAPI, Body
 from fastapi.responses import HTMLResponse
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, validator, Field
+from datetime import datetime
 
 
 class Movie(BaseModel):
     id : Optional[int]
-    title : str
+    title : str 
     overview : str
     year : str
-    rating : str
+    rating : str = None
     category : str
+
+    @validator('Check Title')
+    def title_check(cls,title):
+        long = len(title)
+        if long < 4:
+            raise ValueError("The title must have minumum 4 characters, actual characters : {long}")
+        elif long > 30:
+            raise ValueError("The title must have maximum 30 characters, actual characters {long}")
+    
+    @validator('Check Year')
+    def year_check(cls,year):
+        actual_year = int(datetime.now().strftime("%Y"))
+        oldest_year = 1888
+        if int(year) > actual_year:
+            raise Exception("The year of movie can't be more than actual year, entered year {year}")
+        elif int(year) < oldest_year:
+            raise Exception("The year of movie can't be less than actual year, entered year {year}")
+    
+    @validator('check rating')
+    def resume(cls):
+        print("holaa")
+
+
 
 app = FastAPI()
 
@@ -160,7 +184,11 @@ def get_movie_all(movie : Movie, year_more : bool = False,
 
 @app.post('/movies',tags = ['movies'])
 def create_movie(movie : Movie):
-    var_movies.append(movie)
+    """
+    new_movie = {'id':movie.id,'title':movie.title,'overwiew':movie.overview,
+                 'year':movie.year,'rating':movie.rating,'category':movie.category}
+    """
+    var_movies.append(movie.dict())
     return var_movies
 
 
