@@ -1,6 +1,17 @@
 
 from fastapi import FastAPI, Body
 from fastapi.responses import HTMLResponse
+from typing import Optional
+from pydantic import BaseModel
+
+
+class Movie(BaseModel):
+    id : Optional[int]
+    title : str
+    overview : str
+    year : str
+    rating : str
+    category : str
 
 app = FastAPI()
 
@@ -106,29 +117,6 @@ def get_movie(id : int):
         return f'Pelicula no encontrada, ID : {id}'
     return movie
 
-"""
-@app.get('/movies/year/{year}',tags=['movies'])
-def get_movie_by_year(year:str):
-    if year == "":
-        return []
-    moviese = list(filter(lambda x:x['year'] == year,var_movies))
-    return moviese
-
-@app.get('/movies/categories/{category}',tags=['movies'])
-def get_movie_by_category(category:str):
-    if category == "":
-        return []
-    moviese = list(filter(lambda x:x['category'] == category,var_movies))
-    return moviese
-
-@app.get('/movies/rating/{rating}',tags=['movies'])
-def get_movie_by_rating(rating:str):
-    if rating == "":
-        return []
-    moviese = list(filter(lambda x:x['rating'] == rating,var_movies))
-    return moviese
-"""
-
 @app.get('/movies/title/{title}',tags=['movies'])
 def get_movie_by_title(title:str):
     moviese = list(filter(lambda x:x['title'] == title,var_movies))
@@ -137,8 +125,7 @@ def get_movie_by_title(title:str):
     return moviese
 
 @app.get('/movies/',tags=['movies'])
-def get_movie_all(category : str = "", year : str = "",
-                  rating : str = "",year_more : bool = False,
+def get_movie_all(movie : Movie, year_more : bool = False,
                   year_low : bool = False,rat_more : bool = False, 
                   rat_low : bool = False):
 ##### ^^^ Parameters and variables of function ^^^ ################################################################
@@ -150,7 +137,7 @@ def get_movie_all(category : str = "", year : str = "",
         return f'No possible filter of search, only you can select one, more than or low than'
     temp_var_movies = var_movies
 #### ^^^ Value to override and parameter's validation of search about filters of year and rating ^^^ ###############
-    dictionary_tool = {'category':[category,{'only':True}],'year':[year,year_parameter],'rating':[rating,rating_parameter]}
+    dictionary_tool = {'category':[movie.category,{'only':True}],'year':[movie.year,year_parameter],'rating':[movie.rating,rating_parameter]}
     for i in dictionary_tool:
         if dictionary_tool[i][0] != "" and len(dictionary_tool[i][1]) > 1: 
             if dictionary_tool[i][1]['more'] == True: 
@@ -172,10 +159,9 @@ def get_movie_all(category : str = "", year : str = "",
         
 
 @app.post('/movies',tags = ['movies'])
-def create_movie(title:str = Body(),overview:str = Body(),year:str = Body(),rating:str = Body(), category:str =  Body()):
-    new = {'id':len(var_movies)+1,'title':title,'overview':overview,'year':year,'rating':rating,'category':category}
-    var_movies.append(new)
-    return new['id']
+def create_movie(movie : Movie):
+    var_movies.append(movie)
+    return var_movies
 
 
 @app.delete('/movie/{id}',tags=['movies'])
@@ -190,18 +176,18 @@ def delete_movie(id:int):
     return f'The movie with ID : {id} not found'
 
 @app.put('/movie/{id}',tags=['movies'])
-def update_movie(id : int,title : str, overview : str, year : str, rating : str, category : str):
+def update_movie(id : int,movie : Movie):
     global var_movies
     counter_parameter = 0
     for i in var_movies:
         if i['id'] == id:
             counter_parameter += 1
-            i['title'] = title 
-            i['overview'] = overview 
-            i['year'] = year
-            i['rating'] = rating
-            i['category'] = category
-            return id
+            i['title'] = movie.title 
+            i['overview'] = movie.overview 
+            i['year'] = movie.year
+            i['rating'] = movie.rating
+            i['category'] = movie.category
+            return var_movies
     return f'Movie not found, ID : {id}'
 
             
