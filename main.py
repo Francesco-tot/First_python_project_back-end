@@ -175,13 +175,11 @@ def get_movie_all(movie : Movie, year_more : bool = False,
             view = list(filter(lambda x:x[i] == dictionary_tool[i][0], temp_var_movies))
             temp_var_movies = view 
 #### ^^^ Algorithm proccess for the search ^^^ #####################################################################
-
     if len(temp_var_movies) == 0 or var_movies == temp_var_movies: 
         return "The Search is empty, please enter again..."
 #### ^^^ Validation for results of search and default parameters entry for function ^^^ ############################
     return temp_var_movies 
         
-
 @app.post('/movies',tags = ['movies'])
 def create_movie(movie : Movie):
     """
