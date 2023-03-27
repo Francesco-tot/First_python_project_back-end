@@ -140,18 +140,18 @@ def message():
 
 @app.get('/movies',tags = ['movies'])
 def get_movies():
-    return var_movies
+    return new_movies
 
 @app.get('/movies/{id}',tags=['movies'])
 def get_movie(id : int):
-    movie = list(filter(lambda x:x['id']==id,var_movies))
+    movie = list(filter(lambda x:x.id==id,new_movies))
     if len(movie) == 0:
         return f'Pelicula no encontrada, ID : {id}'
     return movie
 
 @app.get('/movies/title/{title}',tags=['movies'])
 def get_movie_by_title(title:str):
-    moviese = list(filter(lambda x:x['title'] == title,var_movies))
+    moviese = list(filter(lambda x:x.title == title,var_movies))
     if len(moviese) == 0:
         return "title not found"
     return moviese
@@ -190,27 +190,28 @@ def get_movie_all(movie : Movie, year_more : bool = False,
         
 @app.post('/movies',tags = ['movies'])
 def create_movie(movie : Movie):
-
+    global new_movies
+    movie.id = len(new_movies) + 1
     """
     new_movie = {'id':movie.id,'title':movie.title,'overwiew':movie.overview,
                  'year':movie.year,'rating':movie.rating,'category':movie.category}
     """
-    var_movies.append(movie.dict())
+    var_movies.append(movie)#.dict())
     return var_movies
 
 
 @app.delete('/movie/{id}',tags=['movies'])
 def delete_movie(id:int):
-    global var_movies
+    global new_movies
     counter = 0
-    for movie in var_movies:
+    for movie in new_movies:
         counter += 1
-        if movie['id'] == id:
-            var_movies.remove(movie)
+        if movie.id == id:
+            new_movies.remove(movie)
             return id
     return f'The movie with ID : {id} not found'
 
-@app.put('/movie/{id}',tags=['movies'])
+#@app.put('/movie/{id}',tags=['movies'])
 def update_movie(id : int,movie : Movie):
     global var_movies
     counter_parameter = 0
@@ -229,6 +230,7 @@ def addi(movie : Movie):
     movie.id = len(new_movies) + 1
     new_movies.append(movie)           
 
+"""
 new_movie = Movie(title='HOLA',overview='HOLA HOLA',year='2012',rating='10',category='Accion')
 new_movie1 = Movie(title='Olax',overview='HOLA HOLA',year='2013',rating='8',category='Accion')
 new_movie2 = Movie(title='popeto',overview='HOLA HOLA',year='2015',rating='10',category='Accion')
@@ -245,3 +247,4 @@ print(new_movie)
 print(new_movie1)
 print(new_movie2)
 print(new_movie3)
+"""
