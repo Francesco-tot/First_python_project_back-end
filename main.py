@@ -5,24 +5,26 @@ from typing import Optional
 from pydantic import BaseModel, validator
 from datetime import datetime
 
+new_movies = []
 
 class Movie(BaseModel):
-    id : Optional[int]
+    id : Optional[int] 
     title : str 
     overview : str
     year : str
     rating : str = None
     category : str
 
-    @validator('Check Title')
+    @validator('title')
     def title_check(cls,title):
         long = len(title)
         if long < 4:
             raise ValueError("The title must have minumum 4 characters, actual characters : {long}")
         elif long > 30:
             raise ValueError("The title must have maximum 30 characters, actual characters {long}")
+        return title
     
-    @validator('Check Year')
+    @validator('year')
     def year_check(cls,year):
         actual_year = int(datetime.now().strftime("%Y"))
         oldest_year = 1888
@@ -30,10 +32,15 @@ class Movie(BaseModel):
             raise Exception("The year of movie can't be more than actual year, entered year {year}")
         elif int(year) < oldest_year:
             raise Exception("The year of movie can't be less than actual year, entered year {year}")
+        return year
     
-    @validator('check rating')
-    def resume(cls):
-        print("holaa")
+    @validator('id')
+    def id_for_Movie(cls,id):
+        #print(len(new_movies))
+        id = len(new_movies) + 1
+        new_movies.append(id)
+        return id
+    
 
 
 
@@ -42,6 +49,7 @@ app = FastAPI()
 
 app.title = "mi aplicación con FastAPI"
 app.version = "0.0.1"
+
 
 var_movies = [
     {
@@ -182,6 +190,7 @@ def get_movie_all(movie : Movie, year_more : bool = False,
         
 @app.post('/movies',tags = ['movies'])
 def create_movie(movie : Movie):
+
     """
     new_movie = {'id':movie.id,'title':movie.title,'overwiew':movie.overview,
                  'year':movie.year,'rating':movie.rating,'category':movie.category}
@@ -216,5 +225,23 @@ def update_movie(id : int,movie : Movie):
             return var_movies
     return f'Movie not found, ID : {id}'
 
-            
+def addi(movie : Movie):
+    movie.id = len(new_movies) + 1
+    new_movies.append(movie)           
 
+new_movie = Movie(title='HOLA',overview='HOLA HOLA',year='2012',rating='10',category='Accion')
+new_movie1 = Movie(title='Olax',overview='HOLA HOLA',year='2013',rating='8',category='Accion')
+new_movie2 = Movie(title='popeto',overview='HOLA HOLA',year='2015',rating='10',category='Accion')
+new_movie3 = Movie(title='dimitri',overview='HOLA HOLA',year='2018',rating='10',category='Accion')
+print(new_movie)
+print(new_movie1)
+print(new_movie2)
+print(new_movie3)
+addi(new_movie)
+addi(new_movie1)
+addi(new_movie2)
+addi(new_movie3)
+print(new_movie)
+print(new_movie1)
+print(new_movie2)
+print(new_movie3)
