@@ -1,11 +1,9 @@
 
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
-from typing import Optional
+from fastapi import FastAPI, Query, Path
+from fastapi.responses import HTMLResponse, JSONResponse
+from typing import Optional, List
 from pydantic import BaseModel, validator
 from datetime import datetime
-
-new_movies = []
 
 class Movie(BaseModel):
     id : Optional[int] 
@@ -15,13 +13,26 @@ class Movie(BaseModel):
     rating : str = None
     category : str
 
+    class Config:
+        schema_extra = {
+            'example':{
+                'id' : 'Automatic Generation',
+                'title' : 'Title of movie',
+                'overview' : 'Some about the theme or plot of movie',
+                'year' : 'movie release year',
+                'rating' : 'Depend of views',
+                'category' : 'Category of movie, Action, Adventure, ...'
+            }
+        }
+
+
     @validator('title')
     def title_check(cls,title):
         long = len(title)
         if long < 4:
-            raise ValueError("The title must have minumum 4 characters, actual characters : {long}")
+            return ValueError(f"The title must have minumum 4 characters, actual characters : {long}")
         elif long > 30:
-            raise ValueError("The title must have maximum 30 characters, actual characters {long}")
+            return ValueError(f"The title must have maximum 30 characters, actual characters {long}")
         return title
     
     @validator('year')
@@ -29,20 +40,34 @@ class Movie(BaseModel):
         actual_year = int(datetime.now().strftime("%Y"))
         oldest_year = 1888
         if int(year) > actual_year:
-            raise Exception("The year of movie can't be more than actual year, entered year {year}")
+            return Exception(f"The year of movie can't be more than actual year, entered year {year}")
         elif int(year) < oldest_year:
-            raise Exception("The year of movie can't be less than actual year, entered year {year}")
+            return Exception(f"The year of movie can't be less than actual year, entered year {year}")
         return year
     
     @validator('id')
     def id_for_Movie(cls,id):
-        #print(len(new_movies))
-        id = len(new_movies) + 1
-        new_movies.append(id)
+        id = len(var_movies) + 1
+        var_movies.append(id)
         return id
     
-
-
+    @validator('category')
+    def check_category(cls,category):
+        categories = ['Accion','Terror','Drama','Comedia','Romance','Documental','Infantil','Anime',
+                      'Thriller','Suspenso','History of life','Aventura']
+        if category not in categories:
+            raise Exception(f'{category} is not a possible category, please enter again')
+        return category
+    
+    @validator('overview')
+    def check_overview(cls,overview):
+        long = len(overview)
+        if long < 15:
+            raise Exception(f'Overview must have minimum 15 characters of lenght, now : {long}')
+        elif long > 200:
+            raise Exception(f'Overview must have maximum 200 characters of lenght, now : {long}')
+        return overview
+        
 
 app = FastAPI()
 
@@ -138,28 +163,29 @@ var_movies = [
 def message():
     return HTMLResponse('<h1>Welcome to Movie Practice API :D</h1>')
 
-@app.get('/movies',tags = ['movies'])
-def get_movies():
-    return new_movies
+@app.get('/movies',tags = ['movies'], response_model=List[Movie])
+def get_movies() -> List[Movie]:
+    return JSONResponse(content = var_movies)
 
-@app.get('/movies/{id}',tags=['movies'])
-def get_movie(id : int):
-    movie = list(filter(lambda x:x.id==id,new_movies))
+@app.get('/movies/{id}',tags=['movies'], response_model = Movie)
+def get_movie(id : int = Path(ge=1, le=len(var_movies))) -> Movie:
+    movie = list(filter(lambda x:x['id']==id,var_movies))
     if len(movie) == 0:
-        return f'Pelicula no encontrada, ID : {id}'
-    return movie
+        return JSONResponse(content=[])
+    return JSONResponse(content = movie)
 
-@app.get('/movies/title/{title}',tags=['movies'])
-def get_movie_by_title(title:str):
-    moviese = list(filter(lambda x:x.title == title,var_movies))
+@app.get('/movies/title/{title}',tags=['movies'],response_model = Movie)
+def get_movie_by_title(title:str = Path(min_length=4, max_length=30)) -> Movie:
+    moviese = list(filter(lambda x:x['title'] == title,var_movies))
     if len(moviese) == 0:
-        return "title not found"
-    return moviese
+        return JSONResponse(content = [])
+    return JSONResponse(content = moviese)
 
-@app.get('/movies/',tags=['movies'])
-def get_movie_all(movie : Movie, year_more : bool = False,
+@app.get('/movies/',tags=['movies'], response_model = List[Movie])
+def get_movie_all(category : str = "",year : str = "",rating : str = "", 
+                  year_more : bool = False,
                   year_low : bool = False,rat_more : bool = False, 
-                  rat_low : bool = False):
+                  rat_low : bool = False) -> List[Movie]:
 ##### ^^^ Parameters and variables of function ^^^ ################################################################
     global var_movies
     year_parameter = {'more':year_more,'low':year_low}
@@ -169,7 +195,7 @@ def get_movie_all(movie : Movie, year_more : bool = False,
         return f'No possible filter of search, only you can select one, more than or low than'
     temp_var_movies = var_movies
 #### ^^^ Value to override and parameter's validation of search about filters of year and rating ^^^ ###############
-    dictionary_tool = {'category':[movie.category,{'only':True}],'year':[movie.year,year_parameter],'rating':[movie.rating,rating_parameter]}
+    dictionary_tool = {'category':[category,{'only':True}],'year':[year,year_parameter],'rating':[rating,rating_parameter]}
     for i in dictionary_tool:
         if dictionary_tool[i][0] != "" and len(dictionary_tool[i][1]) > 1: 
             if dictionary_tool[i][1]['more'] == True: 
@@ -184,35 +210,31 @@ def get_movie_all(movie : Movie, year_more : bool = False,
             temp_var_movies = view 
 #### ^^^ Algorithm proccess for the search ^^^ #####################################################################
     if len(temp_var_movies) == 0 or var_movies == temp_var_movies: 
-        return "The Search is empty, please enter again..."
+        return JSONResponse(content = [])
 #### ^^^ Validation for results of search and default parameters entry for function ^^^ ############################
-    return temp_var_movies 
+    return JSONResponse(content = temp_var_movies) 
         
-@app.post('/movies',tags = ['movies'])
-def create_movie(movie : Movie):
-    global new_movies
-    movie.id = len(new_movies) + 1
-    """
-    new_movie = {'id':movie.id,'title':movie.title,'overwiew':movie.overview,
-                 'year':movie.year,'rating':movie.rating,'category':movie.category}
-    """
-    var_movies.append(movie)#.dict())
-    return var_movies
+@app.post('/movies',tags = ['movies'], response_model = dict)
+def create_movie(movie : Movie) -> dict:
+    global var_movies
+    movie.id = len(var_movies) + 1
+    var_movies.append(movie.dict())
+    return JSONResponse(content = {'message':'The movie was add successfully'})
 
 
-@app.delete('/movie/{id}',tags=['movies'])
-def delete_movie(id:int):
-    global new_movies
+@app.delete('/movie/{id}',tags=['movies'],response_model = dict)
+def delete_movie(id:int) -> dict:
+    global var_movies
     counter = 0
-    for movie in new_movies:
+    for movie in var_movies:
         counter += 1
-        if movie.id == id:
-            new_movies.remove(movie)
-            return id
-    return f'The movie with ID : {id} not found'
+        if movie['id']== id:
+            var_movies.remove(movie)
+            return JSONResponse(content = {'message':'The movie was remove successfully'})
+    return JSONResponse(content = {'message':'The movie was not found'})
 
-#@app.put('/movie/{id}',tags=['movies'])
-def update_movie(id : int,movie : Movie):
+@app.put('/movie/{id}',tags=['movies'],response_model = dict)
+def update_movie(id : int,movie : Movie) -> dict:
     global var_movies
     counter_parameter = 0
     for i in var_movies:
@@ -223,12 +245,8 @@ def update_movie(id : int,movie : Movie):
             i['year'] = movie.year
             i['rating'] = movie.rating
             i['category'] = movie.category
-            return var_movies
-    return f'Movie not found, ID : {id}'
-
-def addi(movie : Movie):
-    movie.id = len(new_movies) + 1
-    new_movies.append(movie)           
+            return JSONResponse(content = {'message':'The movie was update successfully'})
+    return JSONResponse(content = {'message':'The movie was not found'})
 
 """
 new_movie = Movie(title='HOLA',overview='HOLA HOLA',year='2012',rating='10',category='Accion')
