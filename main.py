@@ -1,9 +1,22 @@
 
-from fastapi import FastAPI, Query, Path
+from fastapi import Depends,FastAPI, Path, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from typing import Optional, List
 from pydantic import BaseModel, validator
 from datetime import datetime
+from jwt_manager import create_token, validate_token
+from fastapi.security import HTTPBearer
+
+class JWTBearer(HTTPBearer):
+    async def __call__(self, request : Request):
+        auth = await super().__call__(request)
+        data = validate_token(auth.credentials)
+        if data['email'] != "admin@gmail.com":
+            raise HTTPException(status_code = 403,detail = "Credenciales son invalidas")
+
+class User(BaseModel):
+    email : str
+    password : str
 
 class Movie(BaseModel):
     id : Optional[int] 
@@ -163,25 +176,31 @@ var_movies = [
 def message():
     return HTMLResponse('<h1>Welcome to Movie Practice API :D</h1>')
 
-@app.get('/movies',tags = ['movies'], response_model=List[Movie])
-def get_movies() -> List[Movie]:
-    return JSONResponse(content = var_movies)
+@app.post('/login',tags=['auth'])
+def login(user : User):
+    if user.email == "admin@gmail.com" and user.password == "admin":
+        token : str = create_token(user.dict())
+    return JSONResponse(status_code = 200, content = token)
 
-@app.get('/movies/{id}',tags=['movies'], response_model = Movie)
+@app.get('/movies',tags = ['movies'], response_model=List[Movie],status_code=200,dependencies = [Depends(JWTBearer())])
+def get_movies() -> List[Movie]:
+    return JSONResponse(status_code = 200,content = var_movies)
+
+@app.get('/movies/{id}',tags=['movies'], response_model = Movie,status_code=200)
 def get_movie(id : int = Path(ge=1, le=len(var_movies))) -> Movie:
     movie = list(filter(lambda x:x['id']==id,var_movies))
     if len(movie) == 0:
-        return JSONResponse(content=[])
-    return JSONResponse(content = movie)
+        return JSONResponse(status_code = 404,content=[])
+    return JSONResponse(status_code = 200,content = movie)
 
-@app.get('/movies/title/{title}',tags=['movies'],response_model = Movie)
+@app.get('/movies/title/{title}',tags=['movies'],response_model = Movie,status_code = 200)
 def get_movie_by_title(title:str = Path(min_length=4, max_length=30)) -> Movie:
     moviese = list(filter(lambda x:x['title'] == title,var_movies))
     if len(moviese) == 0:
-        return JSONResponse(content = [])
-    return JSONResponse(content = moviese)
+        return JSONResponse(status_code = 404,content = [])
+    return JSONResponse(status_code = 200,content = moviese)
 
-@app.get('/movies/',tags=['movies'], response_model = List[Movie])
+@app.get('/movies/',tags=['movies'], response_model = List[Movie],status_code=200)
 def get_movie_all(category : str = "",year : str = "",rating : str = "", 
                   year_more : bool = False,
                   year_low : bool = False,rat_more : bool = False, 
@@ -210,19 +229,19 @@ def get_movie_all(category : str = "",year : str = "",rating : str = "",
             temp_var_movies = view 
 #### ^^^ Algorithm proccess for the search ^^^ #####################################################################
     if len(temp_var_movies) == 0 or var_movies == temp_var_movies: 
-        return JSONResponse(content = [])
+        return JSONResponse(status_code = 404,content = [])
 #### ^^^ Validation for results of search and default parameters entry for function ^^^ ############################
-    return JSONResponse(content = temp_var_movies) 
+    return JSONResponse(status_code = 200,content = temp_var_movies) 
         
-@app.post('/movies',tags = ['movies'], response_model = dict)
+@app.post('/movies',tags = ['movies'], response_model = dict, status_code=201)
 def create_movie(movie : Movie) -> dict:
     global var_movies
     movie.id = len(var_movies) + 1
     var_movies.append(movie.dict())
-    return JSONResponse(content = {'message':'The movie was add successfully'})
+    return JSONResponse(status_code = 201,content = {'message':'The movie was add successfully'})
 
 
-@app.delete('/movie/{id}',tags=['movies'],response_model = dict)
+@app.delete('/movie/{id}',tags=['movies'],response_model = dict,status_code=200)
 def delete_movie(id:int) -> dict:
     global var_movies
     counter = 0
@@ -230,10 +249,10 @@ def delete_movie(id:int) -> dict:
         counter += 1
         if movie['id']== id:
             var_movies.remove(movie)
-            return JSONResponse(content = {'message':'The movie was remove successfully'})
-    return JSONResponse(content = {'message':'The movie was not found'})
+            return JSONResponse(status_code = 200,content = {'message':'The movie was remove successfully'})
+    return JSONResponse(status_code = 404,content = {'message':'The movie was not found'})
 
-@app.put('/movie/{id}',tags=['movies'],response_model = dict)
+@app.put('/movie/{id}',tags=['movies'],response_model = dict,status_code=200)
 def update_movie(id : int,movie : Movie) -> dict:
     global var_movies
     counter_parameter = 0
@@ -245,24 +264,5 @@ def update_movie(id : int,movie : Movie) -> dict:
             i['year'] = movie.year
             i['rating'] = movie.rating
             i['category'] = movie.category
-            return JSONResponse(content = {'message':'The movie was update successfully'})
-    return JSONResponse(content = {'message':'The movie was not found'})
-
-"""
-new_movie = Movie(title='HOLA',overview='HOLA HOLA',year='2012',rating='10',category='Accion')
-new_movie1 = Movie(title='Olax',overview='HOLA HOLA',year='2013',rating='8',category='Accion')
-new_movie2 = Movie(title='popeto',overview='HOLA HOLA',year='2015',rating='10',category='Accion')
-new_movie3 = Movie(title='dimitri',overview='HOLA HOLA',year='2018',rating='10',category='Accion')
-print(new_movie)
-print(new_movie1)
-print(new_movie2)
-print(new_movie3)
-addi(new_movie)
-addi(new_movie1)
-addi(new_movie2)
-addi(new_movie3)
-print(new_movie)
-print(new_movie1)
-print(new_movie2)
-print(new_movie3)
-"""
+            return JSONResponse(status_code = 200,content = {'message':'The movie was update successfully'})
+    return JSONResponse(status_code = 404,content = {'message':'The movie was not found'})
